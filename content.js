@@ -2,6 +2,7 @@ console.log("Video Timer Notifier: Script avviato.");
 
 let notificationSent = false;
 let currentInternalVideoIndex = 0;
+let lastProcessedLessonIndex = -1; // Tiene traccia dell'ultima lezione processata
 
 // Simula un clic su un elemento
 function simulaClick(elemento) {
@@ -167,6 +168,9 @@ function checkVideoTimeForCurrentLesson() {
   let currentLesson = lezioni[currentLessonIndex];
   if (!currentLesson) return;
   
+  // Se stiamo già processando questa lezione, non fare nulla
+  if (currentLessonIndex === lastProcessedLessonIndex) return;
+  
   // Ottiene la percentuale di completamento della lezione corrente
   let progressPercentage = getLessonProgress(currentLesson);
   
@@ -174,9 +178,12 @@ function checkVideoTimeForCurrentLesson() {
   if (progressPercentage > 90 && !notificationSent) {
     console.log(`Lezione completata al ${progressPercentage}%. Passaggio alla prossima lezione...`);
     notificationSent = true;
+    lastProcessedLessonIndex = currentLessonIndex;
     passareAllaProssimaLezione(currentLessonIndex, lezioni);
   } else if (progressPercentage <= 90) {
     notificationSent = false;
+    // Aggiorna l'indice solo se la lezione non è completata
+    lastProcessedLessonIndex = currentLessonIndex;
   }
 }
 
@@ -202,6 +209,9 @@ function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
   simulaClick(prossimaLezione);
   currentInternalVideoIndex = 0;
   
+  // Reset del flag per permettere il processing della nuova lezione
+  notificationSent = false;
+  
   // Attendi 1,5 secondi prima di controllare se anche questa è completata
   setTimeout(() => {
     let progressPercentage = getLessonProgress(prossimaLezione);
@@ -210,6 +220,7 @@ function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
       passareAllaProssimaLezione(currentLessonIndex + 1, lezioni);
     } else {
       console.log(`Lezione al ${progressPercentage}%. Avvio video...`);
+      lastProcessedLessonIndex = currentLessonIndex + 1;
       let internalVideos = getInternalVideos(prossimaLezione);
       if (internalVideos.length > 0) {
         simulaClick(internalVideos[0]);
