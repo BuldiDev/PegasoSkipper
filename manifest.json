@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Lezioni Automation",
+  "name": "PegasoSkipper",
   "version": "1.0",
-  "description": "Automatizza il passaggio tra le lezioni e i video.",
+  "description": "Salta automaticamente le lezioni completate su Pegaso.",
   "permissions": ["activeTab", "scripting"],
   "host_permissions": ["*://*/*"],
   "background": {

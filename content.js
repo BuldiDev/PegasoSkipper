@@ -1,5 +1,3 @@
-console.log("Video Timer Notifier: Script avviato.");
-
 let notificationSent = false;
 let currentInternalVideoIndex = 0;
 let lastProcessedLessonIndex = -1; // Tiene traccia dell'ultima lezione processata
@@ -43,7 +41,6 @@ function cercaTabLezioniContinuo() {
     const elementi = Array.from(document.querySelectorAll('div.align-left.flex.items-center.h-full.leading-normal.font-medium'));
     for (const elemento of elementi) {
       if (elemento.textContent.toLowerCase().includes("lezioni")) {
-        console.log("Tab 'Lezioni' trovato, avvio espansione...");
         setTimeout(() => {
           espandiTutteLezioni();
         }, 5000);
@@ -56,23 +53,19 @@ function cercaTabLezioniContinuo() {
 
 // Apre tutti gli obiettivi non ancora visualizzati
 function apriTuttiGliObiettivi() {
-  // Cerca tutti gli elementi con cursor-pointer che contengono "Obiettivi"
   const tuttiGliElementi = Array.from(document.querySelectorAll('.cursor-pointer'));
   const obiettiviNonAperti = tuttiGliElementi.filter(elemento => {
     const testoObiettivi = elemento.textContent.toLowerCase().includes('obiettivi');
     if (!testoObiettivi) return false;
     
-    // Controlla se l'icona è ancora rosa (bg-platform-primary-light) invece di verde
     const iconaNonAperta = elemento.querySelector('.bg-platform-primary-light');
     return iconaNonAperta !== null;
   });
   
   if (obiettiviNonAperti.length > 0) {
-    console.log(`Apertura di ${obiettiviNonAperti.length} obiettivi...`);
     obiettiviNonAperti.forEach((obiettivo) => {
       simulaClick(obiettivo);
     });
-    console.log("Obiettivi aperti.");
     return true;
   }
   return false;
@@ -83,14 +76,12 @@ function cercaEApriObiettivi(tentativi = 0) {
   const maxTentativi = 10;
   
   if (tentativi >= maxTentativi) {
-    console.log("Nessun obiettivo da aprire trovato dopo 10 tentativi.");
     return;
   }
   
   const trovati = apriTuttiGliObiettivi();
   
   if (!trovati) {
-    // Riprova dopo 1 secondo
     setTimeout(() => {
       cercaEApriObiettivi(tentativi + 1);
     }, 1000);
@@ -120,11 +111,6 @@ function espandiTutteLezioni() {
     }
   });
   
-  if (lezioniEspanse > 0) {
-    console.log(`Espanse ${lezioniEspanse} lezioni.`);
-  }
-  
-  // Aspetta 2 secondi e poi cerca gli obiettivi con retry
   setTimeout(() => {
     cercaEApriObiettivi();
   }, 2000);
@@ -168,21 +154,16 @@ function checkVideoTimeForCurrentLesson() {
   let currentLesson = lezioni[currentLessonIndex];
   if (!currentLesson) return;
   
-  // Se stiamo già processando questa lezione, non fare nulla
   if (currentLessonIndex === lastProcessedLessonIndex) return;
   
-  // Ottiene la percentuale di completamento della lezione corrente
   let progressPercentage = getLessonProgress(currentLesson);
   
-  // Se la lezione è completata (>90%), passa alla prossima
   if (progressPercentage > 90 && !notificationSent) {
-    console.log(`Lezione completata al ${progressPercentage}%. Passaggio alla prossima lezione...`);
     notificationSent = true;
     lastProcessedLessonIndex = currentLessonIndex;
     passareAllaProssimaLezione(currentLessonIndex, lezioni);
   } else if (progressPercentage <= 90) {
     notificationSent = false;
-    // Aggiorna l'indice solo se la lezione non è completata
     lastProcessedLessonIndex = currentLessonIndex;
   }
 }
@@ -190,43 +171,31 @@ function checkVideoTimeForCurrentLesson() {
 // Passa alla prossima lezione in base all'indice attuale
 function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
   if (!lezioni || lezioni.length === 0) {
-    console.log("Nessuna lezione disponibile.");
     return;
   }
   
   if (currentLessonIndex >= lezioni.length - 1) {
-    console.log("Non ci sono altre lezioni.");
     return;
   }
   
   let prossimaLezione = lezioni[currentLessonIndex + 1];
   if (!prossimaLezione) {
-    console.log("Impossibile trovare la prossima lezione.");
     return;
   }
   
-  console.log("Selezionata lezione:", prossimaLezione.textContent.trim());
   simulaClick(prossimaLezione);
   currentInternalVideoIndex = 0;
-  
-  // Reset del flag per permettere il processing della nuova lezione
   notificationSent = false;
   
-  // Attendi 1,5 secondi prima di controllare se anche questa è completata
   setTimeout(() => {
     let progressPercentage = getLessonProgress(prossimaLezione);
     if (progressPercentage > 90) {
-      console.log(`Anche questa lezione è completata al ${progressPercentage}%. Salto alla successiva...`);
       passareAllaProssimaLezione(currentLessonIndex + 1, lezioni);
     } else {
-      console.log(`Lezione al ${progressPercentage}%. Avvio video...`);
       lastProcessedLessonIndex = currentLessonIndex + 1;
       let internalVideos = getInternalVideos(prossimaLezione);
       if (internalVideos.length > 0) {
         simulaClick(internalVideos[0]);
-        console.log("Avviato il primo video interno della nuova lezione.");
-      } else {
-        console.log("Nessun video interno trovato nella nuova lezione. Continuo...");
       }
     }
   }, 1500);
@@ -234,8 +203,6 @@ function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
 
 cercaTabLezioniContinuo();
 
-// Aspetta 10 secondi prima di iniziare il controllo automatico per permettere il caricamento iniziale
 setTimeout(() => {
-  console.log("Avvio controllo automatico delle lezioni...");
   setInterval(checkVideoTimeForCurrentLesson, 1000);
 }, 10000);
