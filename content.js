@@ -39,11 +39,10 @@ function getActiveLessonIndex() {
 // Cerca "Lezioni" in un ciclo finché non lo trova e poi espande le lezioni
 function cercaTabLezioniContinuo() {
   const intervalId = setInterval(() => {
-    console.log("Ricerca del tab 'Lezioni' in corso...");
     const elementi = Array.from(document.querySelectorAll('div.align-left.flex.items-center.h-full.leading-normal.font-medium'));
     for (const elemento of elementi) {
       if (elemento.textContent.toLowerCase().includes("lezioni")) {
-        console.log(`Tab 'Lezioni' trovato: ${elemento.textContent.trim()}`);
+        console.log("Tab 'Lezioni' trovato, avvio espansione...");
         setTimeout(() => {
           espandiTutteLezioni();
         }, 5000);
@@ -51,51 +50,83 @@ function cercaTabLezioniContinuo() {
         return;
       }
     }
-    console.log("Tab 'Lezioni' non ancora trovato, continuo la ricerca...");
   }, 1000);
+}
+
+// Apre tutti gli obiettivi non ancora visualizzati
+function apriTuttiGliObiettivi() {
+  // Cerca tutti gli elementi con cursor-pointer che contengono "Obiettivi"
+  const tuttiGliElementi = Array.from(document.querySelectorAll('.cursor-pointer'));
+  const obiettiviNonAperti = tuttiGliElementi.filter(elemento => {
+    const testoObiettivi = elemento.textContent.toLowerCase().includes('obiettivi');
+    if (!testoObiettivi) return false;
+    
+    // Controlla se l'icona è ancora rosa (bg-platform-primary-light) invece di verde
+    const iconaNonAperta = elemento.querySelector('.bg-platform-primary-light');
+    return iconaNonAperta !== null;
+  });
+  
+  if (obiettiviNonAperti.length > 0) {
+    console.log(`Apertura di ${obiettiviNonAperti.length} obiettivi...`);
+    obiettiviNonAperti.forEach((obiettivo) => {
+      simulaClick(obiettivo);
+    });
+    console.log("Obiettivi aperti.");
+    return true;
+  }
+  return false;
+}
+
+// Cerca e apre gli obiettivi con retry
+function cercaEApriObiettivi(tentativi = 0) {
+  const maxTentativi = 10;
+  
+  if (tentativi >= maxTentativi) {
+    console.log("Nessun obiettivo da aprire trovato dopo 10 tentativi.");
+    return;
+  }
+  
+  const trovati = apriTuttiGliObiettivi();
+  
+  if (!trovati) {
+    // Riprova dopo 1 secondo
+    setTimeout(() => {
+      cercaEApriObiettivi(tentativi + 1);
+    }, 1000);
+  }
 }
 
 // Espande tutte le lezioni, escludendo il tab "Lezioni"
 function espandiTutteLezioni() {
-  console.log("Espansione delle lezioni in corso...");
   let lezioniDaEspandere = Array.from(
     document.querySelectorAll('div.align-left.flex.items-center.h-full.leading-normal.font-medium')
   ).filter((lezione) => !lezione.textContent.toLowerCase().includes("lezioni"));
 
-  if (lezioniDaEspandere.length === 0) {
-    console.log("Nessuna lezione da espandere trovata.");
-    return;
-  }
+  if (lezioniDaEspandere.length === 0) return;
 
   let lezioniEspanse = 0;
-  lezioniDaEspandere.forEach((lezione, index) => {
-    // Trova il contenitore della lezione
+  lezioniDaEspandere.forEach((lezione) => {
     const containerPadre = lezione.closest('.flex.align-middle.leading-none.px-4');
+    if (!containerPadre) return;
     
-    if (!containerPadre) {
-      console.log(`Lezione ${index + 1} - Container non trovato, salto questa lezione.`);
-      return;
-    }
-    
-    // Il container ha un parent che è dentro .cursor-pointer.relative.align-middle
-    // Il contenuto espanso è un fratello di questo parent
     const clickableParent = containerPadre.parentElement;
     const nextSibling = clickableParent ? clickableParent.nextElementSibling : null;
-    
-    // Controlla se il nextSibling contiene il div con il contenuto espanso
     const isExpanded = nextSibling && nextSibling.querySelector('[data-v-839a3bcc].border-t.text-platform-text');
     
-    console.log(`Lezione ${index + 1} - Ha contenuto espanso: ${!!isExpanded}`);
-    
     if (!isExpanded) {
-      console.log(`Espandendo la lezione ${index + 1}: ${lezione.textContent.trim()}`);
       simulaClick(lezione);
       lezioniEspanse++;
-    } else {
-      console.log(`La lezione ${index + 1} è già espansa: ${lezione.textContent.trim()}`);
     }
   });
-  console.log(`Espansione completata: ${lezioniEspanse} nuove lezioni espanse.`);
+  
+  if (lezioniEspanse > 0) {
+    console.log(`Espanse ${lezioniEspanse} lezioni.`);
+  }
+  
+  // Aspetta 2 secondi e poi cerca gli obiettivi con retry
+  setTimeout(() => {
+    cercaEApriObiettivi();
+  }, 2000);
 }
 
 // Ottiene i video interni all'interno di una lezione
@@ -110,30 +141,22 @@ function getInternalVideos(lessonElement) {
 // Legge il tempo rimanente usando l'elemento timer
 function getRemainingTime() {
   let timeElement = document.querySelector('div[data-v-64af934f]');
-  if (!timeElement) {
-    console.log("Impossibile trovare il timer con data-v-64af934f.");
-    return null;
-  }
+  if (!timeElement) return null;
   const timeMatch = timeElement.textContent.match(/\d{2}:\d{2}/);
   return timeMatch ? timeMatch[0].trim() : null;
 }
 
 // Controlla il timer per la lezione corrente e gestisce il cambio di video o lezione
 function checkVideoTimeForCurrentLesson() {
-  console.log("Verifica timer per la lezione corrente...");
   let currentTime = getRemainingTime();
-  if (!currentTime) {
-    console.log("Tempo non disponibile, riprovo...");
-    return;
-  }
-  console.log("Tempo attuale:", currentTime);
+  if (!currentTime) return;
 
   let currentLessonIndex = getActiveLessonIndex();
   let lezioni = getLezioni();
   let currentLesson = lezioni[currentLessonIndex];
 
   if (currentTime === "00:00" && !notificationSent) {
-    console.log("Timer a 00:00. Verifica video interni...");
+    console.log("Timer a 00:00. Cambio video/lezione...");
     notificationSent = true;
     let internalVideos = getInternalVideos(currentLesson);
     if (currentInternalVideoIndex < internalVideos.length - 1) {
@@ -141,11 +164,10 @@ function checkVideoTimeForCurrentLesson() {
       simulaClick(internalVideos[currentInternalVideoIndex]);
       console.log("Passaggio al video interno successivo.");
     } else {
-      console.log("Tutti i video della lezione completati. Passaggio alla prossima lezione...");
+      console.log("Passaggio alla prossima lezione...");
       passareAllaProssimaLezione(currentLessonIndex, lezioni);
     }
   } else if (currentTime !== "00:00") {
-    console.log(`Timer ancora in corso. Tempo attuale: ${currentTime}`);
     notificationSent = false;
   }
 }
