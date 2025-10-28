@@ -154,17 +154,18 @@ function checkVideoTimeForCurrentLesson() {
   let currentLesson = lezioni[currentLessonIndex];
   if (!currentLesson) return;
   
-  if (currentLessonIndex === lastProcessedLessonIndex) return;
-  
   let progressPercentage = getLessonProgress(currentLesson);
   
-  if (progressPercentage > 90 && !notificationSent) {
-    notificationSent = true;
-    lastProcessedLessonIndex = currentLessonIndex;
-    passareAllaProssimaLezione(currentLessonIndex, lezioni);
-  } else if (progressPercentage <= 90) {
+  // Se la lezione è cambiata, resetta lo stato
+  if (currentLessonIndex !== lastProcessedLessonIndex) {
     notificationSent = false;
     lastProcessedLessonIndex = currentLessonIndex;
+  }
+  
+  // Controlla se la lezione corrente è completata e non è ancora stata processata
+  if (progressPercentage > 90 && !notificationSent) {
+    notificationSent = true;
+    passareAllaProssimaLezione(currentLessonIndex, lezioni);
   }
 }
 
