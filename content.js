@@ -138,60 +138,93 @@ function getInternalVideos(lessonElement) {
   return videos;
 }
 
-// Legge il tempo rimanente usando l'elemento timer
-function getRemainingTime() {
-  let timeElement = document.querySelector('div[data-v-64af934f]');
-  if (!timeElement) return null;
-  const timeMatch = timeElement.textContent.match(/\d{2}:\d{2}/);
-  return timeMatch ? timeMatch[0].trim() : null;
+// Legge la percentuale di completamento dalla barra di progresso della lezione
+function getLessonProgress(lessonElement) {
+  if (!lessonElement) return 0;
+  
+  const progressBar = lessonElement.querySelector('.absolute.h-1\\.5.rounded-full.bg-platform-green, .absolute.h-1\\.5.rounded-full.bg-platform-primary');
+  if (!progressBar) return 0;
+  
+  const widthStyle = progressBar.style.width;
+  if (!widthStyle) return 0;
+  
+  const percentMatch = widthStyle.match(/(\d+(?:\.\d+)?)%/);
+  if (percentMatch) {
+    return parseFloat(percentMatch[1]);
+  }
+  
+  return 0;
 }
 
-// Controlla il timer per la lezione corrente e gestisce il cambio di video o lezione
+// Controlla la percentuale di completamento per la lezione corrente
 function checkVideoTimeForCurrentLesson() {
-  let currentTime = getRemainingTime();
-  if (!currentTime) return;
-
   let currentLessonIndex = getActiveLessonIndex();
   let lezioni = getLezioni();
+  
+  if (!lezioni || lezioni.length === 0) return;
+  if (currentLessonIndex < 0 || currentLessonIndex >= lezioni.length) return;
+  
   let currentLesson = lezioni[currentLessonIndex];
-
-  if (currentTime === "00:00" && !notificationSent) {
-    console.log("Timer a 00:00. Cambio video/lezione...");
+  if (!currentLesson) return;
+  
+  // Ottiene la percentuale di completamento della lezione corrente
+  let progressPercentage = getLessonProgress(currentLesson);
+  
+  // Se la lezione è completata (>90%), passa alla prossima
+  if (progressPercentage > 90 && !notificationSent) {
+    console.log(`Lezione completata al ${progressPercentage}%. Passaggio alla prossima lezione...`);
     notificationSent = true;
-    let internalVideos = getInternalVideos(currentLesson);
-    if (currentInternalVideoIndex < internalVideos.length - 1) {
-      currentInternalVideoIndex++;
-      simulaClick(internalVideos[currentInternalVideoIndex]);
-      console.log("Passaggio al video interno successivo.");
-    } else {
-      console.log("Passaggio alla prossima lezione...");
-      passareAllaProssimaLezione(currentLessonIndex, lezioni);
-    }
-  } else if (currentTime !== "00:00") {
+    passareAllaProssimaLezione(currentLessonIndex, lezioni);
+  } else if (progressPercentage <= 90) {
     notificationSent = false;
   }
 }
 
 // Passa alla prossima lezione in base all'indice attuale
 function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
+  if (!lezioni || lezioni.length === 0) {
+    console.log("Nessuna lezione disponibile.");
+    return;
+  }
+  
   if (currentLessonIndex >= lezioni.length - 1) {
     console.log("Non ci sono altre lezioni.");
     return;
   }
+  
   let prossimaLezione = lezioni[currentLessonIndex + 1];
+  if (!prossimaLezione) {
+    console.log("Impossibile trovare la prossima lezione.");
+    return;
+  }
+  
   console.log("Selezionata lezione:", prossimaLezione.textContent.trim());
   simulaClick(prossimaLezione);
   currentInternalVideoIndex = 0;
-  let internalVideos = getInternalVideos(prossimaLezione);
-  if (internalVideos.length > 0) {
-    setTimeout(() => {
-      simulaClick(internalVideos[0]);
-      console.log("Avviato il primo video interno della nuova lezione.");
-    }, 1000);
-  } else {
-    console.log("Nessun video interno trovato nella nuova lezione. Continuo...");
-  }
+  
+  // Attendi 1,5 secondi prima di controllare se anche questa è completata
+  setTimeout(() => {
+    let progressPercentage = getLessonProgress(prossimaLezione);
+    if (progressPercentage > 90) {
+      console.log(`Anche questa lezione è completata al ${progressPercentage}%. Salto alla successiva...`);
+      passareAllaProssimaLezione(currentLessonIndex + 1, lezioni);
+    } else {
+      console.log(`Lezione al ${progressPercentage}%. Avvio video...`);
+      let internalVideos = getInternalVideos(prossimaLezione);
+      if (internalVideos.length > 0) {
+        simulaClick(internalVideos[0]);
+        console.log("Avviato il primo video interno della nuova lezione.");
+      } else {
+        console.log("Nessun video interno trovato nella nuova lezione. Continuo...");
+      }
+    }
+  }, 1500);
 }
 
 cercaTabLezioniContinuo();
-setInterval(checkVideoTimeForCurrentLesson, 1000);
+
+// Aspetta 10 secondi prima di iniziare il controllo automatico per permettere il caricamento iniziale
+setTimeout(() => {
+  console.log("Avvio controllo automatico delle lezioni...");
+  setInterval(checkVideoTimeForCurrentLesson, 1000);
+}, 10000);
