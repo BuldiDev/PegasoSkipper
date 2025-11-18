@@ -16,12 +16,15 @@ function simulaClick(elemento) {
 // Restituisce tutte le lezioni escludendo quelle indesiderate
 function getLezioni() {
   let tutteLezioni = Array.from(document.querySelectorAll('div[data-v-839a3bcc].cursor-pointer'));
-  return tutteLezioni.filter(lezione => {
+  console.log('[PegasoSkipper] Lezioni totali trovate:', tutteLezioni.length);
+  let lezioniFiltrate = tutteLezioni.filter(lezione => {
     let testo = lezione.textContent.trim().toLowerCase();
     return !testo.includes("obiettivi") &&
            !testo.includes("test di fine lezione") &&
            !testo.includes("dispensa");
   });
+  console.log('[PegasoSkipper] Lezioni filtrate:', lezioniFiltrate.length);
+  return lezioniFiltrate;
 }
 
 // Determina l'indice della lezione attiva leggendo il cursore già presente nel DOM
@@ -37,10 +40,13 @@ function getActiveLessonIndex() {
 
 // Cerca "Lezioni" in un ciclo finché non lo trova e poi espande le lezioni
 function cercaTabLezioniContinuo() {
+  console.log('[PegasoSkipper] Inizio ricerca tab Lezioni...');
   const intervalId = setInterval(() => {
     const elementi = Array.from(document.querySelectorAll('div.align-left.flex.items-center.h-full.leading-normal.font-medium'));
+    console.log('[PegasoSkipper] Elementi trovati per tab:', elementi.length);
     for (const elemento of elementi) {
       if (elemento.textContent.toLowerCase().includes("lezioni")) {
+        console.log('[PegasoSkipper] Tab Lezioni trovato! Espansione tra 5 secondi...');
         setTimeout(() => {
           espandiTutteLezioni();
         }, 5000);
@@ -111,9 +117,53 @@ function espandiTutteLezioni() {
     }
   });
   
+  console.log('[PegasoSkipper] Espanse', lezioniEspanse, 'sezioni');
+  
   setTimeout(() => {
     cercaEApriObiettivi();
+    // Dopo aver aperto gli obiettivi, cerca la prima lezione non completata
+    setTimeout(() => {
+      avviaMonitoraggioAutomatico();
+    }, 3000);
   }, 2000);
+}
+
+// Avvia il monitoraggio automatico sulla prima lezione non completata
+function avviaMonitoraggioAutomatico() {
+  let lezioni = getLezioni();
+  if (!lezioni || lezioni.length === 0) {
+    console.log('[PegasoSkipper] Nessuna lezione trovata dopo l\'espansione');
+    return;
+  }
+  
+  console.log('[PegasoSkipper] Trovate', lezioni.length, 'lezioni totali');
+  
+  // Trova la prima lezione non completata
+  let primaLezioneNonCompletata = trovaProximaLezioneNonCompletata(0, lezioni);
+  
+  if (primaLezioneNonCompletata === -1) {
+    console.log('[PegasoSkipper] ✅ Tutte le lezioni sono già completate!');
+    return;
+  }
+  
+  console.log('[PegasoSkipper] Prima lezione non completata:', primaLezioneNonCompletata + 1);
+  
+  // Clicca sulla prima lezione non completata
+  let lezioneTarget = lezioni[primaLezioneNonCompletata];
+  if (lezioneTarget) {
+    console.log('[PegasoSkipper] Apertura lezione', primaLezioneNonCompletata + 1);
+    simulaClick(lezioneTarget);
+    lastProcessedLessonIndex = primaLezioneNonCompletata;
+    
+    // Aspetta e avvia il video se presente
+    setTimeout(() => {
+      let internalVideos = getInternalVideos(lezioneTarget);
+      if (internalVideos.length > 0) {
+        console.log('[PegasoSkipper] Avvio video');
+        simulaClick(internalVideos[0]);
+      }
+    }, 2000);
+  }
 }
 
 // Ottiene i video interni all'interno di una lezione
@@ -148,58 +198,79 @@ function checkVideoTimeForCurrentLesson() {
   let currentLessonIndex = getActiveLessonIndex();
   let lezioni = getLezioni();
   
-  if (!lezioni || lezioni.length === 0) return;
+  if (!lezioni || lezioni.length === 0) {
+    console.log('[PegasoSkipper] Nessuna lezione trovata');
+    return;
+  }
   if (currentLessonIndex < 0 || currentLessonIndex >= lezioni.length) return;
   
   let currentLesson = lezioni[currentLessonIndex];
   if (!currentLesson) return;
   
   let progressPercentage = getLessonProgress(currentLesson);
+  console.log('[PegasoSkipper] Lezione', currentLessonIndex + 1, '- Progresso:', progressPercentage + '%');
   
   // Se la lezione è cambiata, resetta lo stato
   if (currentLessonIndex !== lastProcessedLessonIndex) {
     notificationSent = false;
     lastProcessedLessonIndex = currentLessonIndex;
+    console.log('[PegasoSkipper] Nuova lezione attiva:', currentLessonIndex + 1);
   }
   
   // Controlla se la lezione corrente è completata e non è ancora stata processata
   if (progressPercentage > 90 && !notificationSent) {
+    console.log('[PegasoSkipper] Lezione completata! Passo alla prossima...');
     notificationSent = true;
     passareAllaProssimaLezione(currentLessonIndex, lezioni);
   }
 }
 
+// Trova la prima lezione non completata partendo da un indice
+function trovaProximaLezioneNonCompletata(startIndex, lezioni) {
+  for (let i = startIndex; i < lezioni.length; i++) {
+    let progressPercentage = getLessonProgress(lezioni[i]);
+    if (progressPercentage < 90) {
+      return i;
+    }
+  }
+  return -1; // Tutte le lezioni sono completate
+}
+
 // Passa alla prossima lezione in base all'indice attuale
 function passareAllaProssimaLezione(currentLessonIndex, lezioni) {
   if (!lezioni || lezioni.length === 0) {
+    console.log('[PegasoSkipper] Nessuna lezione disponibile');
     return;
   }
   
   if (currentLessonIndex >= lezioni.length - 1) {
+    console.log('[PegasoSkipper] Ultima lezione raggiunta!');
     return;
   }
   
-  let prossimaLezione = lezioni[currentLessonIndex + 1];
-  if (!prossimaLezione) {
+  // Trova la prossima lezione NON completata
+  let prossimaLezioneIndex = trovaProximaLezioneNonCompletata(currentLessonIndex + 1, lezioni);
+  
+  if (prossimaLezioneIndex === -1) {
+    console.log('[PegasoSkipper] Tutte le lezioni sono completate!');
     return;
   }
+  
+  let prossimaLezione = lezioni[prossimaLezioneIndex];
+  console.log('[PegasoSkipper] Passo alla lezione', prossimaLezioneIndex + 1, '(saltate', prossimaLezioneIndex - currentLessonIndex - 1, 'lezioni già completate)');
   
   simulaClick(prossimaLezione);
   currentInternalVideoIndex = 0;
   notificationSent = false;
+  lastProcessedLessonIndex = prossimaLezioneIndex;
   
   setTimeout(() => {
-    let progressPercentage = getLessonProgress(prossimaLezione);
-    if (progressPercentage > 90) {
-      passareAllaProssimaLezione(currentLessonIndex + 1, lezioni);
-    } else {
-      lastProcessedLessonIndex = currentLessonIndex + 1;
-      let internalVideos = getInternalVideos(prossimaLezione);
-      if (internalVideos.length > 0) {
-        simulaClick(internalVideos[0]);
-      }
+    let internalVideos = getInternalVideos(prossimaLezione);
+    if (internalVideos.length > 0) {
+      console.log('[PegasoSkipper] Avvio video nella nuova lezione');
+      simulaClick(internalVideos[0]);
     }
-  }, 1500);
+  }, 2000);
 }
 
 cercaTabLezioniContinuo();
