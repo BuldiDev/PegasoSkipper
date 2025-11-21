@@ -20,7 +20,17 @@ function click(elemento) {
 function getProgress(lessonElement) {
   if (!lessonElement) return 0;
   
-  const progressBar = lessonElement.querySelector('.absolute.h-1\\.5.rounded-full.bg-platform-green, .absolute.h-1\\.5.rounded-full.bg-platform-primary');
+  // Prova a leggere dal testo "100%" (più affidabile)
+  const progressText = lessonElement.querySelector('.w-1\\/12.text-xs');
+  if (progressText) {
+    const textMatch = progressText.textContent.match(/(\d+(?:\.\d+)?)%/);
+    if (textMatch) {
+      return parseFloat(textMatch[1]);
+    }
+  }
+  
+  // Fallback: leggi dalla barra di progresso
+  const progressBar = lessonElement.querySelector('.absolute.h-1\\.5.rounded-full.bg-platform-primary');
   if (!progressBar) return 0;
   
   const width = progressBar.style.width;
@@ -32,7 +42,7 @@ function getProgress(lessonElement) {
 
 // Ottiene tutte le lezioni filtrate
 function getAllLessons() {
-  const all = Array.from(document.querySelectorAll('div[data-v-839a3bcc].cursor-pointer'));
+  const all = Array.from(document.querySelectorAll('div[data-v-5c42503f].cursor-pointer'));
   return all.filter(lesson => {
     const text = lesson.textContent.trim().toLowerCase();
     return !text.includes("obiettivi") &&
@@ -134,7 +144,7 @@ function expandAllSections() {
     
     const parent = container.parentElement;
     const next = parent ? parent.nextElementSibling : null;
-    const isExpanded = next && next.querySelector('[data-v-839a3bcc].border-t.text-platform-text');
+    const isExpanded = next && next.querySelector('[data-v-5c42503f].border-t.text-platform-text');
     
     if (!isExpanded) {
       click(section);
