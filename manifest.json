@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PegasoSkipper",
-  "version": "1.5",
+  "version": "1.6",
   "description": "Salta automaticamente le lezioni completate su Pegaso.",
   "permissions": ["activeTab", "scripting"],
   "host_permissions": ["*://*/*"],

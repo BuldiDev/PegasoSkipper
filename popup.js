@@ -1,7 +1,9 @@
 // Configurazione GitHub
 const GITHUB_OWNER = 'BuldiDev';
 const GITHUB_REPO = 'PegasoSkipper';
-const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
+const GITHUB_BRANCH = 'main';
+const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits/${GITHUB_BRANCH}`;
+const GITHUB_ZIP_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/archive/refs/heads/${GITHUB_BRANCH}.zip`;
 
 // Mostra la versione corrente
 document.getElementById('current-version').textContent = chrome.runtime.getManifest().version;
@@ -20,87 +22,64 @@ async function checkForUpdates() {
   updateBtn.textContent = '⏳ Controllo...';
   
   try {
-    // Ottieni l'ultima release da GitHub
+    // Ottieni l'ultimo commit da GitHub
     const response = await fetch(GITHUB_API_URL, {
       headers: {
         'Accept': 'application/vnd.github.v3+json'
       }
     });
     
-    if (response.status === 404) {
-      // Nessuna release trovata
-      showMessage('Nessuna release disponibile su GitHub', 'info');
-      chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases` });
-      return;
-    }
-    
     if (!response.ok) {
-      // Se c'è un errore, apri semplicemente la pagina delle release
-      chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases` });
-      showMessage('Aperta pagina release GitHub', 'info');
+      // Se c'è un errore, apri semplicemente la pagina del repository
+      chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}` });
+      showMessage('Aperta pagina GitHub', 'info');
       return;
     }
     
-    const release = await response.json();
+    const commit = await response.json();
     
-    // Verifica che ci sia un tag_name
-    if (!release.tag_name) {
-      chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases` });
-      showMessage('Aperta pagina release GitHub', 'info');
+    if (!commit.sha) {
+      chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}` });
+      showMessage('Aperta pagina GitHub', 'info');
       return;
     }
     
-    const latestVersion = release.tag_name.replace('v', ''); // Rimuovi 'v' se presente
-    const currentVersion = chrome.runtime.getManifest().version;
+    // Ottieni l'hash del commit (primi 7 caratteri)
+    const latestCommitHash = commit.sha.substring(0, 7);
+    const commitDate = new Date(commit.commit.author.date).toLocaleDateString('it-IT');
+    const commitMessage = commit.commit.message.split('\n')[0]; // Prima riga del messaggio
     
-    console.log('Versione corrente:', currentVersion);
-    console.log('Versione su GitHub:', latestVersion);
+    console.log('Ultimo commit:', latestCommitHash);
+    console.log('Data:', commitDate);
+    console.log('Messaggio:', commitMessage);
     
-    // Confronta le versioni
-    if (compareVersions(latestVersion, currentVersion) > 0) {
-      showMessage(`Nuova versione ${latestVersion} disponibile!`, 'info');
+    // Verifica se c'è un nuovo commit controllando localStorage
+    const lastKnownCommit = localStorage.getItem('lastCommitHash');
+    
+    if (lastKnownCommit !== latestCommitHash) {
+      showMessage(`Nuovo aggiornamento disponibile! (${commitDate})`, 'info');
       
-      // Trova il file .zip dell'estensione negli assets
-      const asset = release.assets.find(a => a.name.endsWith('.zip'));
+      // Salva il nuovo commit
+      localStorage.setItem('lastCommitHash', latestCommitHash);
       
-      if (asset) {
-        // Apri la pagina di download in una nuova tab
-        chrome.tabs.create({ url: asset.browser_download_url });
-        showMessage('Download avviato. Installa manualmente l\'estensione.', 'success');
-      } else {
-        // Se non c'è un file .zip, apri la pagina della release
-        chrome.tabs.create({ url: release.html_url });
-        showMessage('Aperta pagina release su GitHub', 'info');
-      }
+      // Scarica lo zip del branch
+      setTimeout(() => {
+        chrome.tabs.create({ url: GITHUB_ZIP_URL });
+        showMessage('Download avviato. Estrai e installa l\'estensione.', 'success');
+      }, 1000);
     } else {
       showMessage('✓ Hai già l\'ultima versione!', 'success');
     }
     
   } catch (error) {
     console.error('Errore durante il controllo aggiornamenti:', error);
-    // In caso di errore, apri semplicemente la pagina delle release
-    chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases` });
-    showMessage('Aperta pagina release GitHub', 'info');
+    // In caso di errore, apri semplicemente la pagina del repository
+    chrome.tabs.create({ url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}` });
+    showMessage('Aperta pagina GitHub', 'info');
   } finally {
     updateBtn.disabled = false;
     updateBtn.textContent = '🔄 Verifica Aggiornamenti';
   }
-}
-
-// Funzione per confrontare versioni (es: "1.2.0" vs "1.1.0")
-function compareVersions(v1, v2) {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-  
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
-    
-    if (p1 > p2) return 1;
-    if (p1 < p2) return -1;
-  }
-  
-  return 0;
 }
 
 // Event listener per il pulsante
