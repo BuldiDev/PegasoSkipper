@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PegasoSkipper</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 15px 0;
+      text-align: center;
+    }
+    .info {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      backdrop-filter: blur(10px);
+    }
+    .version {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+    .status {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .message {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      display: none;
+    }
+    .message.success {
+      background: rgba(76, 175, 80, 0.3);
+      display: block;
+    }
+    .message.error {
+      background: rgba(244, 67, 54, 0.3);
+      display: block;
+    }
+    .message.info {
+      background: rgba(33, 150, 243, 0.3);
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎓 PegasoSkipper</h1>
+  
+  <div class="info">
+    <div class="version">Versione: <span id="current-version">1.1</span></div>
+    <div class="status">Stato: <span id="status">Attivo</span></div>
+  </div>
+
+  <button id="update-btn">🔄 Verifica Aggiornamenti</button>
+  
+  <div id="message" class="message"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
